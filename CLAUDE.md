@@ -4,11 +4,11 @@
 This app is an internal command center for a cinematic website business.
 
 ## Tool roles
-- OpenClaw is the commander and dispatcher.
+- ChatGPT / OpenAI API is the orchestrator brain.
 - Claude Code is the only coding worker.
 - n8n is the workflow engine.
 - Vercel hosts the app and deployments.
-- Antigravity is optional and should be treated as a synced advanced workspace, not the primary controller.
+- Antigravity is optional and should be treated as a future synced workspace, not a required dependency.
 
 ## Architecture rules
 - Use Next.js + TypeScript + Tailwind.
