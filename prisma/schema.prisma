@@ -1,0 +1,145 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  niche     String?
+  status    String   @default("active") // active | inactive | prospect
+  notes     String?
+  email     String?
+  phone     String?
+  website   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects     Project[]
+  assets       ProjectAsset[]
+  messages     Message[]
+  workflowRuns WorkflowRun[]
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  name          String
+  clientId      String
+  status        String   @default("planning") // planning | in_progress | review | completed | deployed | paused
+  description   String?
+  previewUrl    String?
+  productionUrl String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  client       Client         @relation(fields: [clientId], references: [id])
+  jobs         Job[]
+  assets       ProjectAsset[]
+  workflowRuns WorkflowRun[]
+  deployments  Deployment[]
+  messages     Message[]
+}
+
+model Job {
+  id          String   @id @default(cuid())
+  projectId   String?
+  agentId     String?
+  type        String   // build_site | revision | deploy | review | upload_assets | etc.
+  status      String   @default("queued") // queued | running | waiting_for_input | waiting_for_approval | failed | completed | deployed
+  title       String
+  description String?
+  payload     String?  // JSON stringified
+  result      String?  // JSON stringified
+  errorMsg    String?
+  priority    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  completedAt DateTime?
+
+  project Project? @relation(fields: [projectId], references: [id])
+  agent   Agent?   @relation(fields: [agentId], references: [id])
+}
+
+model Agent {
+  id          String   @id @default(cuid())
+  name        String
+  type        String   // openai_orchestrator | claude_worker | antigravity | n8n
+  status      String   @default("offline") // online | offline | busy | error
+  currentTask String?
+  lastHeartbeat DateTime?
+  errorState  String?
+  metadata    String?  // JSON
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  jobs Job[]
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  role      String   // user | assistant | system
+  content   String
+  clientId  String?
+  projectId String?
+  metadata  String?  // JSON: command intent, linked job ids, etc.
+  createdAt DateTime @default(now())
+
+  client    Client?        @relation(fields: [clientId], references: [id])
+  project   Project?       @relation(fields: [projectId], references: [id])
+  assets    ProjectAsset[]
+}
+
+model ProjectAsset {
+  id        String   @id @default(cuid())
+  projectId String?
+  clientId  String?
+  messageId String?
+  name      String
+  url       String
+  type      String   // image | video | document | other
+  size      Int?     // bytes
+  mimeType  String?
+  createdAt DateTime @default(now())
+
+  project Project? @relation(fields: [projectId], references: [id])
+  client  Client?  @relation(fields: [clientId], references: [id])
+  message Message? @relation(fields: [messageId], references: [id])
+}
+
+model WorkflowRun {
+  id           String   @id @default(cuid())
+  templateName String
+  status       String   @default("pending") // pending | running | completed | failed
+  clientId     String?
+  projectId    String?
+  n8nRunId     String?
+  logsJson     String?  // JSON
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  client  Client?  @relation(fields: [clientId], references: [id])
+  project Project? @relation(fields: [projectId], references: [id])
+}
+
+model Deployment {
+  id            String   @id @default(cuid())
+  projectId     String
+  environment   String   // preview | production
+  status        String   @default("pending") // pending | building | ready | error | cancelled
+  url           String?
+  approvalState String   @default("not_required") // not_required | pending | approved | rejected
+  approvedBy    String?
+  vercelId      String?
+  commitSha     String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  readyAt       DateTime?
+
+  project Project @relation(fields: [projectId], references: [id])
+}
