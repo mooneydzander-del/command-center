@@ -15,9 +15,10 @@ interface CommandInputProps {
   loading?: boolean
   clients?: { id: string; name: string }[]
   projects?: { id: string; name: string }[]
+  onClientChange?: (clientId: string) => void
 }
 
-export function CommandInput({ onSubmit, loading, clients = [], projects = [] }: CommandInputProps) {
+export function CommandInput({ onSubmit, loading, clients = [], projects = [], onClientChange }: CommandInputProps) {
   const [value, setValue] = useState('')
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [selectedClient, setSelectedClient] = useState<string>('')
@@ -102,7 +103,7 @@ export function CommandInput({ onSubmit, loading, clients = [], projects = [] }:
               <Users className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted pointer-events-none" />
               <select
                 value={selectedClient}
-                onChange={e => setSelectedClient(e.target.value)}
+                onChange={e => { setSelectedClient(e.target.value); onClientChange?.(e.target.value) }}
                 className="pl-6 pr-3 py-1.5 text-xs bg-obsidian-800 border border-border rounded text-muted focus:outline-none focus:border-gold/30 appearance-none cursor-pointer"
               >
                 <option value="">No client</option>
@@ -134,7 +135,7 @@ export function CommandInput({ onSubmit, loading, clients = [], projects = [] }:
             value={value}
             onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
-            placeholder="Command OpenClaw… (Enter to send, Shift+Enter for newline)"
+            placeholder="Command the OpenAI orchestrator… (Enter to send, Shift+Enter for newline)"
             rows={1}
             className="bg-transparent text-sm text-cream placeholder:text-muted resize-none px-3 pt-3 pb-2 focus:outline-none min-h-[42px] max-h-40"
           />

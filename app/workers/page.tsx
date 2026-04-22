@@ -1,73 +1,16 @@
+import { prisma } from '@/lib/db'
+import { claudeWorkerAdapter } from '@/services/claude-worker'
+import { openAIOrchestrator } from '@/services/openai'
+import { n8nAdapter } from '@/services/n8n'
 import { Bot, Wifi, WifiOff, AlertTriangle, RefreshCw, Clock, Brain } from 'lucide-react'
 import { Badge, agentStatusVariant, StatusDot } from '@/components/ui/Badge'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { formatRelative } from '@/lib/utils'
 
-type WorkerStatus = 'online' | 'offline' | 'busy' | 'error'
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 type WorkerType = 'openai_orchestrator' | 'claude_worker' | 'antigravity' | 'n8n'
-
-interface MockWorker {
-  id: string
-  name: string
-  type: WorkerType
-  status: WorkerStatus
-  currentTask: string | null
-  lastHeartbeat: Date | null
-  errorState: string | null
-  jobsCompleted: number
-  jobsFailed: number
-  model?: string
-}
-
-const MOCK_WORKERS: MockWorker[] = [
-  {
-    id: 'w1',
-    name: 'OpenAI Orchestrator',
-    type: 'openai_orchestrator',
-    status: 'online',
-    currentTask: 'Classifying: "Build Apex Law landing page"',
-    lastHeartbeat: new Date(Date.now() - 1000 * 30),
-    errorState: null,
-    jobsCompleted: 47,
-    jobsFailed: 0,
-    model: 'gpt-4o',
-  },
-  {
-    id: 'w2',
-    name: 'Claude Code Worker',
-    type: 'claude_worker',
-    status: 'busy',
-    currentTask: 'Building apex-law-v2: generating HTML/CSS/JS',
-    lastHeartbeat: new Date(Date.now() - 1000 * 12),
-    errorState: null,
-    jobsCompleted: 31,
-    jobsFailed: 1,
-    model: 'claude-sonnet-4-6',
-  },
-  {
-    id: 'w3',
-    name: 'n8n Engine',
-    type: 'n8n',
-    status: 'online',
-    currentTask: 'Monitoring workflow triggers',
-    lastHeartbeat: new Date(Date.now() - 1000 * 60 * 2),
-    errorState: null,
-    jobsCompleted: 18,
-    jobsFailed: 0,
-  },
-  {
-    id: 'w4',
-    name: 'Antigravity',
-    type: 'antigravity',
-    status: 'offline',
-    currentTask: null,
-    lastHeartbeat: null,
-    errorState: null,
-    jobsCompleted: 0,
-    jobsFailed: 0,
-  },
-]
 
 const TYPE_DESCRIPTIONS: Record<WorkerType, string> = {
   openai_orchestrator: 'Brain & dispatcher — classifies commands, creates jobs, routes tasks to Claude Code. Never writes code.',
@@ -83,36 +26,82 @@ const TYPE_ICON: Record<WorkerType, React.ElementType> = {
   n8n: RefreshCw,
 }
 
-const STATUS_ICON: Record<WorkerStatus, React.ElementType> = {
+const STATUS_ICON: Record<string, React.ElementType> = {
   online: Wifi,
   offline: WifiOff,
   busy: RefreshCw,
   error: AlertTriangle,
 }
 
-export default function WorkersPage() {
-  const online = MOCK_WORKERS.filter(w => w.status === 'online' || w.status === 'busy').length
-  const total = MOCK_WORKERS.length
+export default async function WorkersPage() {
+  // Fetch DB workers + live status from adapters in parallel
+  const [dbWorkers, claudeStatus, openAIStatus, n8nAlive] = await Promise.all([
+    prisma.agent.findMany({
+      include: { _count: { select: { jobs: true } } },
+      orderBy: { name: 'asc' },
+    }),
+    claudeWorkerAdapter.getStatus(),
+    openAIOrchestrator.getStatus(),
+    n8nAdapter.ping(),
+  ])
+
+  // Merge live status into DB workers
+  const workers = dbWorkers.map(w => {
+    let liveStatus = w.status
+    let liveTask = w.currentTask
+    let liveHeartbeat = w.lastHeartbeat
+
+    if (w.type === 'openai_orchestrator') {
+      liveStatus = openAIStatus.status
+    } else if (w.type === 'claude_worker') {
+      liveStatus = claudeStatus.status
+      liveTask = claudeStatus.currentTask ?? w.currentTask
+      liveHeartbeat = claudeStatus.lastHeartbeat ?? w.lastHeartbeat
+    } else if (w.type === 'n8n') {
+      liveStatus = n8nAlive ? 'online' : 'offline'
+    }
+
+    return { ...w, liveStatus, liveTask, liveHeartbeat }
+  })
+
+  const online = workers.filter(w => w.liveStatus === 'online' || w.liveStatus === 'busy').length
+
+  // Count jobs completed per worker
+  const jobCompletedCounts = await prisma.job.groupBy({
+    by: ['agentId'],
+    where: { status: { in: ['completed', 'deployed'] } },
+    _count: { id: true },
+  })
+  const completedByAgent = jobCompletedCounts.reduce((acc, row) => {
+    if (row.agentId) acc[row.agentId] = row._count.id
+    return acc
+  }, {} as Record<string, number>)
+
+  const failedCounts = await prisma.job.groupBy({
+    by: ['agentId'],
+    where: { status: 'failed' },
+    _count: { id: true },
+  })
+  const failedByAgent = failedCounts.reduce((acc, row) => {
+    if (row.agentId) acc[row.agentId] = row._count.id
+    return acc
+  }, {} as Record<string, number>)
 
   return (
     <div className="p-6 space-y-5 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-display text-xl text-cream">Workers</h2>
-          <p className="text-xs text-muted mt-0.5">{online} of {total} online</p>
+          <p className="text-xs text-muted mt-0.5">{online} of {workers.length} online</p>
         </div>
-        <Button variant="ghost" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />}>
-          Refresh
-        </Button>
       </div>
 
       {/* Summary strip */}
       <div className="flex gap-3 flex-wrap">
-        {MOCK_WORKERS.map(worker => (
+        {workers.map(worker => (
           <div key={worker.id} className="flex items-center gap-2 bg-obsidian-800 border border-border rounded-md px-3 py-2">
-            <StatusDot variant={agentStatusVariant(worker.status)} />
+            <StatusDot variant={agentStatusVariant(worker.liveStatus as 'online' | 'offline' | 'busy' | 'error')} />
             <span className="text-xs text-cream">{worker.name}</span>
-            {worker.model && <span className="text-xs text-muted/60">({worker.model})</span>}
           </div>
         ))}
       </div>
@@ -122,18 +111,19 @@ export default function WorkersPage() {
         <p className="text-xs text-gold/80 font-medium mb-1">System roles</p>
         <p className="text-xs text-muted leading-relaxed">
           <span className="text-cream">OpenAI Orchestrator</span> reads your commands, creates jobs, and routes them. &nbsp;
-          <span className="text-cream">Claude Code Worker</span> executes coding jobs — it is the only system that writes or edits code. &nbsp;
+          <span className="text-cream">Claude Code Worker</span> is the only system that writes or edits code. &nbsp;
           <span className="text-cream">n8n</span> handles automations and pipelines.
         </p>
       </div>
 
       {/* Worker cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {MOCK_WORKERS.map(worker => {
-          const StatusIconComp = STATUS_ICON[worker.status]
-          const TypeIconComp = TYPE_ICON[worker.type]
+        {workers.map(worker => {
+          const StatusIconComp = STATUS_ICON[worker.liveStatus] ?? WifiOff
+          const TypeIconComp = TYPE_ICON[worker.type as WorkerType] ?? Bot
+          const isError = worker.liveStatus === 'error'
           return (
-            <Card key={worker.id} className={worker.status === 'error' ? 'border-status-failed/30' : ''}>
+            <Card key={worker.id} className={isError ? 'border-status-failed/30' : ''}>
               <CardHeader>
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-md bg-obsidian-700 border border-border flex items-center justify-center">
@@ -146,24 +136,25 @@ export default function WorkersPage() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <StatusIconComp className={`w-3.5 h-3.5 ${
-                    worker.status === 'online' ? 'text-status-running' :
-                    worker.status === 'busy' ? 'text-status-waiting animate-spin' :
-                    worker.status === 'error' ? 'text-status-failed' :
-                    'text-muted'
+                    worker.liveStatus === 'online' ? 'text-status-running' :
+                    worker.liveStatus === 'busy' ? 'text-status-waiting animate-spin' :
+                    worker.liveStatus === 'error' ? 'text-status-failed' : 'text-muted'
                   }`} />
-                  <Badge variant={agentStatusVariant(worker.status)} className="capitalize">
-                    {worker.status}
+                  <Badge variant={agentStatusVariant(worker.liveStatus as 'online' | 'offline' | 'busy' | 'error')} className="capitalize">
+                    {worker.liveStatus}
                   </Badge>
                 </div>
               </CardHeader>
 
               <CardBody className="space-y-3">
-                <p className="text-xs text-muted/80 leading-relaxed">{TYPE_DESCRIPTIONS[worker.type]}</p>
+                <p className="text-xs text-muted/80 leading-relaxed">
+                  {TYPE_DESCRIPTIONS[worker.type as WorkerType] ?? worker.type}
+                </p>
 
-                {worker.currentTask && (
+                {worker.liveTask && (
                   <div className="bg-obsidian-900 border border-border rounded-md px-3 py-2">
                     <p className="text-xs text-muted uppercase tracking-widest mb-1">Current Task</p>
-                    <p className="text-xs text-cream">{worker.currentTask}</p>
+                    <p className="text-xs text-cream">{worker.liveTask}</p>
                   </div>
                 )}
 
@@ -176,12 +167,12 @@ export default function WorkersPage() {
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-border">
                   <div className="flex items-center gap-1.5 text-muted">
                     <Clock className="w-3 h-3" />
-                    {worker.lastHeartbeat ? formatRelative(worker.lastHeartbeat) : 'No heartbeat'}
+                    {worker.liveHeartbeat ? formatRelative(worker.liveHeartbeat) : 'No heartbeat'}
                   </div>
                   <div className="flex gap-3 text-muted">
-                    <span><span className="text-status-completed">{worker.jobsCompleted}</span> done</span>
-                    {worker.jobsFailed > 0 && (
-                      <span><span className="text-status-failed">{worker.jobsFailed}</span> failed</span>
+                    <span><span className="text-status-completed">{completedByAgent[worker.id] ?? 0}</span> done</span>
+                    {(failedByAgent[worker.id] ?? 0) > 0 && (
+                      <span><span className="text-status-failed">{failedByAgent[worker.id]}</span> failed</span>
                     )}
                   </div>
                 </div>
@@ -190,6 +181,13 @@ export default function WorkersPage() {
           )
         })}
       </div>
+
+      {workers.length === 0 && (
+        <div className="text-center py-16">
+          <p className="text-sm text-muted">No workers registered yet.</p>
+          <p className="text-xs text-muted/60 mt-1">Workers register via POST /api/workers with their ID and status.</p>
+        </div>
+      )}
     </div>
   )
 }
