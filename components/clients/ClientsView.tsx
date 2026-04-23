@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Search, Plus, Users, ExternalLink } from 'lucide-react'
 import Link from 'next/link'
 import { Badge, clientStatusVariant } from '@/components/ui/Badge'
-import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/shared/EmptyState'
 import { formatDate } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -45,9 +44,13 @@ export function ClientsView({ initialClients }: ClientsViewProps) {
           <h2 className="font-display text-xl text-cream">Clients</h2>
           <p className="text-xs text-muted mt-0.5">{initialClients.length} total clients</p>
         </div>
-        <Button variant="primary" size="sm" icon={<Plus className="w-3.5 h-3.5" />}>
-          Add Client
-        </Button>
+        <Link
+          href="/clients/new"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gold text-obsidian-950 font-medium rounded-md hover:bg-gold-light transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          New Client / Job
+        </Link>
       </div>
 
       <div className="flex gap-3">

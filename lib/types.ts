@@ -19,7 +19,7 @@ export type JobStatus =
   | 'completed'
   | 'deployed'
 
-export type AgentType = 'openai_orchestrator' | 'claude_worker' | 'antigravity' | 'n8n'
+export type AgentType = 'openai_orchestrator' | 'claude_worker' | 'n8n'
 export type AgentStatus = 'online' | 'offline' | 'busy' | 'error'
 
 export type MessageRole = 'user' | 'assistant' | 'system'

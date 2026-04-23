@@ -1,10 +1,9 @@
 import { notFound } from 'next/navigation'
-import { ArrowLeft, ExternalLink, Mail, FolderOpen, Briefcase } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Mail, Briefcase, FolderOpen } from 'lucide-react'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Badge, clientStatusVariant, projectStatusVariant, jobStatusVariant } from '@/components/ui/Badge'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { formatDate, formatRelative } from '@/lib/utils'
 import type { JobStatus, ProjectStatus, ClientStatus } from '@/lib/types'
 
@@ -48,11 +47,14 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
               {client.niche ?? 'No niche'} · Client since {formatDate(client.createdAt)}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
             <Badge variant={clientStatusVariant(client.status as ClientStatus)} className="capitalize">{client.status}</Badge>
-            <Button variant="primary" size="sm" icon={<FolderOpen className="w-3.5 h-3.5" />}>
-              New Project
-            </Button>
+            <Link
+              href={`/clients/new?clientId=${client.id}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs bg-gold text-obsidian-950 font-medium rounded-md hover:bg-gold-light transition-colors"
+            >
+              + New Job
+            </Link>
           </div>
         </div>
       </div>

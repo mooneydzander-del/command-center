@@ -206,7 +206,7 @@ function mockClassify(
     clientId: context.clientId ?? null,
     projectId: context.projectId ?? null,
     jobsToCreate,
-    response: `[Mock] Classified as **${intent}**${jobsToCreate.length ? ` — ${jobsToCreate.length} job(s) queued for Claude Code Worker.` : '.'}`,
+    response: `Command received. Classified as **${intent}**${jobsToCreate.length ? ` — ${jobsToCreate.length} job(s) queued.` : '. No jobs created.'}`,
   }
 }
 

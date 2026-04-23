@@ -9,16 +9,20 @@ datasource db {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  niche     String?
-  status    String   @default("active") // active | inactive | prospect
-  notes     String?
-  email     String?
-  phone     String?
-  website   String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  contactName String?  // primary contact person
+  niche       String?
+  status      String   @default("active") // active | inactive | prospect | past
+  notes       String?
+  email       String?
+  phone       String?
+  address     String?
+  website     String?
+  leadSource  String?  // referral | outreach | inbound | repeat | other
+  tags        String?  // JSON array of strings
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   projects     Project[]
   assets       ProjectAsset[]
@@ -27,15 +31,19 @@ model Client {
 }
 
 model Project {
-  id            String   @id @default(cuid())
-  name          String
-  clientId      String
-  status        String   @default("planning") // planning | in_progress | review | completed | deployed | paused
-  description   String?
-  previewUrl    String?
-  productionUrl String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  clientId       String
+  status         String   @default("planning") // planning | in_progress | review | completed | deployed | paused
+  description    String?
+  styleNotes     String?  // design style, aesthetic direction
+  pages          String?  // pages requested e.g. "Home, About, Contact"
+  features       String?  // special features requested
+  referenceLinks String?  // comma-separated inspiration URLs
+  previewUrl     String?
+  productionUrl  String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   client       Client         @relation(fields: [clientId], references: [id])
   jobs         Job[]
@@ -46,48 +54,53 @@ model Project {
 }
 
 model Job {
-  id          String   @id @default(cuid())
-  projectId   String?
-  agentId     String?
-  type        String   // build_site | revision | deploy | review | upload_assets | etc.
-  status      String   @default("queued") // queued | running | waiting_for_input | waiting_for_approval | failed | completed | deployed
-  title       String
-  description String?
-  payload     String?  // JSON stringified
-  result      String?  // JSON stringified
-  errorMsg    String?
-  priority    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  completedAt DateTime?
+  id           String    @id @default(cuid())
+  projectId    String?
+  agentId      String?
+  type         String    // build_site | revision | deploy | review | upload_assets | landing_page | general
+  status       String    @default("queued") // queued | running | waiting_for_input | waiting_for_approval | failed | completed | deployed
+  title        String
+  description  String?
+  notes        String?   // internal notes separate from description
+  budget       String?   // budget range e.g. "$2,000–$3,500"
+  deadline     DateTime? // target completion date
+  priority     Int       @default(0) // 0=normal, 5=high, 10=urgent
+  payload      String?   // JSON: raw command, source info
+  result       String?   // JSON: Claude worker output
+  errorMsg     String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  completedAt  DateTime?
 
   project Project? @relation(fields: [projectId], references: [id])
   agent   Agent?   @relation(fields: [agentId], references: [id])
 }
 
 model Agent {
-  id          String   @id @default(cuid())
-  name        String
-  type        String   // openai_orchestrator | claude_worker | antigravity | n8n
-  status      String   @default("offline") // online | offline | busy | error
-  currentTask String?
+  id            String    @id @default(cuid())
+  name          String
+  type          String    // openai_orchestrator | claude_worker | n8n
+  status        String    @default("offline") // online | offline | busy | error
+  currentTask   String?
   lastHeartbeat DateTime?
-  errorState  String?
-  metadata    String?  // JSON
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  errorState    String?
+  metadata      String?   // JSON
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   jobs Job[]
 }
 
+// Stores every command and its orchestrated output for full audit trail
 model Message {
-  id        String   @id @default(cuid())
-  role      String   // user | assistant | system
-  content   String
-  clientId  String?
-  projectId String?
-  metadata  String?  // JSON: command intent, linked job ids, etc.
-  createdAt DateTime @default(now())
+  id           String   @id @default(cuid())
+  role         String   // user | assistant | system
+  content      String   // raw user command or assistant response
+  claudePrompt String?  // orchestrator-rewritten prompt sent to Claude Code
+  clientId     String?
+  projectId    String?
+  metadata     String?  // JSON: intent, jobIds created, orchestration details
+  createdAt    DateTime @default(now())
 
   client    Client?        @relation(fields: [clientId], references: [id])
   project   Project?       @relation(fields: [projectId], references: [id])
@@ -104,6 +117,7 @@ model ProjectAsset {
   type      String   // image | video | document | other
   size      Int?     // bytes
   mimeType  String?
+  label     String?  // optional user label e.g. "hero image", "logo"
   createdAt DateTime @default(now())
 
   project Project? @relation(fields: [projectId], references: [id])
@@ -112,34 +126,34 @@ model ProjectAsset {
 }
 
 model WorkflowRun {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   templateName String
-  status       String   @default("pending") // pending | running | completed | failed
+  status       String    @default("pending") // pending | running | completed | failed
   clientId     String?
   projectId    String?
   n8nRunId     String?
-  logsJson     String?  // JSON
+  logsJson     String?   // JSON
   startedAt    DateTime?
   completedAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
   client  Client?  @relation(fields: [clientId], references: [id])
   project Project? @relation(fields: [projectId], references: [id])
 }
 
 model Deployment {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   projectId     String
-  environment   String   // preview | production
-  status        String   @default("pending") // pending | building | ready | error | cancelled
+  environment   String    // preview | production
+  status        String    @default("pending") // pending | building | ready | error | cancelled
   url           String?
-  approvalState String   @default("not_required") // not_required | pending | approved | rejected
+  approvalState String    @default("not_required") // not_required | pending | approved | rejected
   approvedBy    String?
   vercelId      String?
   commitSha     String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   readyAt       DateTime?
 
   project Project @relation(fields: [projectId], references: [id])

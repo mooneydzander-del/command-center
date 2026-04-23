@@ -1,10 +1,9 @@
 import { notFound } from 'next/navigation'
-import { ArrowLeft, ExternalLink, FolderOpen, Briefcase, Rocket, GitBranch } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Briefcase, GitBranch, Rocket } from 'lucide-react'
 import Link from 'next/link'
 import { prisma } from '@/lib/db'
 import { Badge, projectStatusVariant, jobStatusVariant, deploymentStatusVariant } from '@/components/ui/Badge'
 import { Card, CardHeader, CardBody } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import { formatDate, formatRelative } from '@/lib/utils'
 import type { JobStatus, ProjectStatus, DeploymentStatus } from '@/lib/types'
 
@@ -38,9 +37,9 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
   return (
     <div className="p-6 space-y-5 animate-fade-in max-w-6xl">
       <div>
-        <Link href="/projects" className="flex items-center gap-1.5 text-xs text-muted hover:text-cream transition-colors mb-4">
+        <Link href={`/clients/${project.client.id}`} className="flex items-center gap-1.5 text-xs text-muted hover:text-cream transition-colors mb-4">
           <ArrowLeft className="w-3.5 h-3.5" />
-          All Projects
+          {project.client.name}
         </Link>
         <div className="flex items-start justify-between">
           <div>
@@ -55,7 +54,6 @@ export default async function ProjectDetailPage({ params }: { params: Promise<{ 
           </div>
           <div className="flex gap-2 items-center">
             <Badge variant={projectStatusVariant(project.status as ProjectStatus)}>{project.status.replace(/_/g, ' ')}</Badge>
-            <Button variant="primary" size="sm" icon={<Rocket className="w-3.5 h-3.5" />}>Deploy</Button>
           </div>
         </div>
       </div>
