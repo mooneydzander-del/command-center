@@ -8,14 +8,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Cinema-grade dark palette
+        // Pure black palette
         obsidian: {
-          950: '#05050A',
-          900: '#0A0A12',
-          800: '#111118',
-          700: '#18181F',
-          600: '#1E1E28',
-          500: '#26263A',
+          950: '#000000',
+          900: '#090909',
+          800: '#111111',
+          700: '#181818',
+          600: '#1e1e1e',
+          500: '#262626',
         },
         gold: {
           DEFAULT: '#C09A45',
@@ -23,8 +23,8 @@ const config: Config = {
           dim: '#8A6E2F',
         },
         cream: '#EDE9E0',
-        muted: '#8A8A9A',
-        border: '#222230',
+        muted: '#888888',
+        border: '#222222',
         // Status colors
         status: {
           queued: '#6B7FD4',

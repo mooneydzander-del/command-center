@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       create: {
         id,
         name: body.name ?? id,
-        type: body.type ?? 'openclaw',
+        type: body.type ?? 'claude_worker',
         status,
         currentTask: currentTask ?? null,
         lastHeartbeat: new Date(),

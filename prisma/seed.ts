@@ -6,7 +6,7 @@ async function main() {
   console.log('Seeding database…')
 
   // Agents
-  const openClaw = await prisma.agent.upsert({
+  await prisma.agent.upsert({
     where: { id: 'agent-openai' },
     update: {},
     create: {
@@ -29,17 +29,6 @@ async function main() {
       status: 'online',
       currentTask: null,
       lastHeartbeat: new Date(),
-    },
-  })
-
-  const antigravity = await prisma.agent.upsert({
-    where: { id: 'agent-antigravity' },
-    update: {},
-    create: {
-      id: 'agent-antigravity',
-      name: 'Antigravity',
-      type: 'antigravity',
-      status: 'offline',
     },
   })
 
@@ -166,7 +155,7 @@ async function main() {
       type: 'review',
       status: 'waiting_for_approval',
       projectId: rivieraProject.id,
-      agentId: openClaw.id,
+      agentId: claudeWorker.id,
       priority: 8,
     },
   })
@@ -195,7 +184,7 @@ async function main() {
     create: {
       id: 'msg-system-init',
       role: 'system',
-      content: 'Command Center initialized. OpenClaw online.',
+      content: 'Cinema Command Center initialized. OpenAI orchestrator ready.',
     },
   })
 

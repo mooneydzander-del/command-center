@@ -5,13 +5,9 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard,
-  Terminal,
   Users,
-  FolderOpen,
   Briefcase,
   Bot,
-  GitBranch,
-  Rocket,
   Settings,
   ChevronLeft,
   Zap,
@@ -19,13 +15,9 @@ import {
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-  { label: 'Command', href: '/command', icon: Terminal },
   { label: 'Clients', href: '/clients', icon: Users },
-  { label: 'Projects', href: '/projects', icon: FolderOpen },
   { label: 'Jobs', href: '/jobs', icon: Briefcase },
-  { label: 'Workers', href: '/workers', icon: Bot },
-  { label: 'Workflows', href: '/workflows', icon: GitBranch },
-  { label: 'Deployments', href: '/deployments', icon: Rocket },
+  { label: 'Agents', href: '/agents', icon: Bot },
 ]
 
 interface SidebarProps {
